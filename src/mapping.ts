@@ -1,4 +1,4 @@
-import { BigInt } from "@graphprotocol/graph-ts"
+import { Address, BigInt, log, store } from "@graphprotocol/graph-ts"
 import {
   GH,
   Approval,
@@ -6,63 +6,81 @@ import {
   OwnerUpdated,
   Transfer
 } from "../generated/GH/GH"
-import { ExampleEntity } from "../generated/schema"
+import { Owner, Token } from "../generated/schema"
 
-export function handleApproval(event: Approval): void {
-  // Entities can be loaded from the store using a string ID; this ID
-  // needs to be unique across all entities of the same type
-  let entity = ExampleEntity.load(event.transaction.from.toHex())
-
-  // Entities only exist after they have been saved to the store;
-  // `null` checks allow to create entities on demand
-  if (!entity) {
-    entity = new ExampleEntity(event.transaction.from.toHex())
-
-    // Entity fields can be set using simple assignments
-    entity.count = BigInt.fromI32(0)
-  }
-
-  // BigInt and BigDecimal math are supported
-  entity.count = entity.count + BigInt.fromI32(1)
-
-  // Entity fields can be set based on event parameters
-  entity.owner = event.params.owner
-  entity.spender = event.params.spender
-
-  // Entities can be written to the store with `.save()`
-  entity.save()
-
-  // Note: If a handler doesn't require existing field values, it is faster
-  // _not_ to load the entity from the store. Instead, create it fresh with
-  // `new Entity(...)`, set the fields that should be updated and save the
-  // entity back to the store. Fields that were not set or unset remain
-  // unchanged, allowing for partial updates to be applied.
-
-  // It is also possible to access smart contracts from mappings. For
-  // example, the contract that has emitted the event can be connected to
-  // with:
-  //
-  // let contract = Contract.bind(event.address)
-  //
-  // The following functions can then be called on this contract to access
-  // state variables and other data:
-  //
-  // - contract.balanceOf(...)
-  // - contract.baseURI(...)
-  // - contract.getApproved(...)
-  // - contract.isApprovedForAll(...)
-  // - contract.mintAddress(...)
-  // - contract.name(...)
-  // - contract.nextTokenID(...)
-  // - contract.owner(...)
-  // - contract.ownerOf(...)
-  // - contract.supportsInterface(...)
-  // - contract.symbol(...)
-  // - contract.tokenURI(...)
-}
+export function handleApproval(event: Approval): void {}
 
 export function handleApprovalForAll(event: ApprovalForAll): void {}
 
 export function handleOwnerUpdated(event: OwnerUpdated): void {}
 
-export function handleTransfer(event: Transfer): void {}
+export function handleTransfer(event: Transfer): void {
+  if(event.params.from.equals(Address.zero())){ // mint
+    let owner = Owner.load(event.params.to.toHex());
+    if(!owner){
+      owner = new Owner(event.params.to.toHex());
+      owner.count = 0;
+    }
+    owner.address = event.params.to;
+    owner.count++;
+    owner.save();
+    let token = new Token(event.params.id.toString());
+    token.owner = event.params.to.toHex();
+    token.ownerString = event.params.to.toHex();
+    token.save();
+
+  }
+  else if(event.params.to.equals(Address.zero())) { // burn
+    let owner = Owner.load(event.params.to.toHex());
+    if(!owner){
+      log.error("Something wrong!", []);
+    }
+    else {
+      owner.count--;
+      if(owner.count == 0){
+        store.remove("Owner", event.params.to.toHex())
+      }
+      else {
+        owner.save();
+      }
+    }
+    store.remove("Token",event.params.id.toString());
+    
+    
+  }
+  else { // Normal transfer
+    let previousOwner = Owner.load(event.params.from.toHex());
+    if(!previousOwner){
+      log.error("Something wrong!", []);
+    }
+    else {
+      previousOwner.count--;
+      if(previousOwner.count == 0){
+        store.remove("Owner", event.params.from.toHex())
+      }
+      else {
+        previousOwner.save();
+      }
+    }
+
+    let newOwner = Owner.load(event.params.from.toHex());
+    if(!newOwner){
+      newOwner = new Owner(event.params.to.toHex());
+      newOwner.count = 0;
+      newOwner.address = event.params.to;
+    }
+    newOwner.count++;
+    newOwner.save();
+
+
+    let token = Token.load(event.params.id.toString());
+    if(!token){
+      log.error("Something wrong!", []);
+    }
+    else {
+      token.owner = event.params.to.toHex();
+      token.ownerString = event.params.to.toHex();
+      token.save();
+    }
+  }
+}

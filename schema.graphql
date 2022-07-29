@@ -1,6 +1,12 @@
-type ExampleEntity @entity {
+type Token @entity {
   id: ID!
-  count: BigInt!
-  owner: Bytes! # address
-  spender: Bytes! # address
+  ownerString : String!
+  owner: Owner!
+}
+
+type Owner @entity {
+  id: ID!
+  tokens: [Token!] @derivedFrom(field: "owner")
+  address : Bytes!
+  count: Int!
 }
