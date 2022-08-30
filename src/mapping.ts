@@ -15,6 +15,25 @@ export function handleApprovalForAll(event: ApprovalForAll): void {}
 export function handleOwnerUpdated(event: OwnerUpdated): void {}
 
 export function handleTransfer(event: Transfer): void {
+  let GoldenHopperVeFlySourceAddress = Address.fromHexString("0x57c7ba9422f96713ba29d91e58103ea64a115131");
+  if(event.params.to.equals(GoldenHopperVeFlySourceAddress)){
+    let owner = Owner.load(event.params.from.toHex());
+    let token = new Token(event.params.id.toString());
+    owner!.goldenHopperStakedForVeFly = true;
+    token.goldenHopperStakedForVeFly = true;
+    owner!.save();
+    token.save();
+    return
+  }
+  else if(event.params.from.equals(GoldenHopperVeFlySourceAddress)){
+    let owner = Owner.load(event.params.to.toHex());
+    let token = new Token(event.params.id.toString());
+    owner!.goldenHopperStakedForVeFly = false;
+    token.goldenHopperStakedForVeFly = false;
+    owner!.save();
+    token.save();
+    return
+  }
   if(event.params.from.equals(Address.zero())){ // mint
     let owner = Owner.load(event.params.to.toHex());
     if(!owner){
