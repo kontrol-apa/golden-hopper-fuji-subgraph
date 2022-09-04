@@ -15,7 +15,7 @@ export function handleApprovalForAll(event: ApprovalForAll): void {}
 export function handleOwnerUpdated(event: OwnerUpdated): void {}
 
 export function handleTransfer(event: Transfer): void {
-  let GoldenHopperVeFlySourceAddress = Address.fromHexString("0x57c7ba9422f96713ba29d91e58103ea64a115131");
+  let GoldenHopperVeFlySourceAddress = Address.fromHexString("0x179f79b81c36eb759efc483c97116a966bfb28de");
   if(event.params.to.equals(GoldenHopperVeFlySourceAddress)){
     let owner = Owner.load(event.params.from.toHex());
     let token = new Token(event.params.id.toString());
