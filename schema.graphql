@@ -3,6 +3,7 @@ type Token @entity {
   ownerString : String!
   owner: Owner!
   goldenHopperStakedForVeFly: Boolean
+  listing: Listing @derivedFrom(field: "goldenHopper")
 }
 
 type Owner @entity {
@@ -11,4 +12,12 @@ type Owner @entity {
   address : Bytes!
   count: Int!
   goldenHopperStakedForVeFly: Boolean
+}
+
+type Listing @entity {
+  id: ID!
+  goldenHopper: Token!
+  price: BigInt!
+  owner: String!
+
 }

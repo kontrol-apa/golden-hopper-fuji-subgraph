@@ -1,12 +1,20 @@
 import { Address, BigInt, log, store } from "@graphprotocol/graph-ts"
 import {
-  GH,
+  GoldenHopper,
   Approval,
   ApprovalForAll,
   OwnerUpdated,
   Transfer
-} from "../generated/GH/GH"
-import { Owner, Token } from "../generated/schema"
+} from "../generated/GoldenHopper/GoldenHopper"
+
+import {
+  AddListingEv,
+  CancelListingEv,
+  FulfillListingEv,
+  UpdateListingEv,
+} from "../generated/Market/Market";
+
+import { Owner, Token, Listing } from "../generated/schema"
 
 export function handleApproval(event: Approval): void {}
 
@@ -16,6 +24,11 @@ export function handleOwnerUpdated(event: OwnerUpdated): void {}
 
 export function handleTransfer(event: Transfer): void {
   let GoldenHopperVeFlySourceAddress = Address.fromHexString("0x179f79b81c36eb759efc483c97116a966bfb28de");
+  let MarketAddress = Address.fromHexString("0xb31c8b4f2350b1b76dfeb144c829f4e9caaa55ed");
+
+  if(event.params.to.equals(MarketAddress) || (event.params.to.equals(MarketAddress)) ) {
+    return;
+  } 
   if(event.params.to.equals(GoldenHopperVeFlySourceAddress)){
     let owner = Owner.load(event.params.from.toHex());
     let token = Token.load(event.params.id.toString());
@@ -24,7 +37,6 @@ export function handleTransfer(event: Transfer): void {
     token!.owner = event.params.from.toHex();
     owner!.save();
     token!.save();
-    log.error("here", []);
     return
   }
   else if(event.params.from.equals(GoldenHopperVeFlySourceAddress)){
@@ -35,8 +47,26 @@ export function handleTransfer(event: Transfer): void {
     token!.owner = event.params.to.toHex();
     owner!.save();
     token!.save();
-    log.error("here", []);
-
+    return
+  }
+  else if(event.params.to.equals(MarketAddress)) {
+    let owner = Owner.load(event.params.from.toHex());
+    let token = Token.load(event.params.id.toString());
+    owner!.goldenHopperStakedForVeFly = true;
+    token!.goldenHopperStakedForVeFly = true;
+    token!.owner = event.params.from.toHex();
+    owner!.save();
+    token!.save();
+    return
+  }
+  else if(event.params.from.equals(MarketAddress)) {
+    let owner = Owner.load(event.params.to.toHex());
+    let token = Token.load(event.params.id.toString());
+    owner!.goldenHopperStakedForVeFly = false;
+    token!.goldenHopperStakedForVeFly = false;
+    token!.owner = event.params.to.toHex();
+    owner!.save();
+    token!.save();
     return
   }
   if(event.params.from.equals(Address.zero())){ // mint
@@ -110,4 +140,65 @@ export function handleTransfer(event: Transfer): void {
       token.save();
     }
   }
+}
+
+export function handleAddListing(event: AddListingEv): void {
+  let listing = new Listing(event.params.listingId.toString());
+  listing.price = event.params.price;
+  listing.owner = event.transaction.from.toHex();
+  listing.goldenHopper = event.params.tokenId.toString();
+  listing.save();
+  
+}
+
+export function handleUpdateListing(event: UpdateListingEv): void {
+  let listing = Listing.load(event.params.listingId.toString());
+  if (listing != null) {
+    listing.price = event.params.price;
+    listing.save();
+
+  }
+}
+
+export function handleCancelListing(event: CancelListingEv): void {
+  store.remove("Listing", event.params.listingId.toString())
+}
+
+export function handleFulfillListing(event: FulfillListingEv): void {
+  let listing = Listing.load(event.params.listingId.toString());
+  let previousOwner = Owner.load(listing!.owner);
+  if(!previousOwner){
+    log.error("Something wrong with transfer! Previous owner doesnt exist {} ", [listing!.owner]);
+  }
+  else {
+    previousOwner.count--;
+    if(previousOwner.count == 0){
+      store.remove("Owner", listing!.owner)
+    }
+    else {
+      previousOwner.save();
+    }
+  }
+
+  let newOwner = Owner.load(event.transaction.from.toHex());
+  if(!newOwner){
+    newOwner = new Owner(event.transaction.from.toHex());
+    newOwner.count = 0;
+    newOwner.address = event.transaction.from;
+  }
+  newOwner.count++;
+  newOwner.save();
+
+
+  let token = Token.load(listing!.goldenHopper);
+  if(!token){
+    log.error("Something wrong with transfer, Token doesnt exist {} !", [listing!.goldenHopper]);
+  }
+  else {
+    token.owner = event.transaction.from.toHex()
+    token.ownerString = event.transaction.from.toHex()
+    token.save();
+  }
+
+  store.remove("Listing", event.params.listingId.toString())
 }

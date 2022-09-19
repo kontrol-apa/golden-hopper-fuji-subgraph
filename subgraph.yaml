@@ -3,12 +3,12 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: ethereum
-    name: GH
+    name: GoldenHopper
     network: fuji
     source:
       address: "0x4B67F6BA70F97892B52F2682d215Bf674b9eDB20"
-      abi: GH
       startBlock: 13063318
+      abi: GoldenHopper
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -19,8 +19,8 @@ dataSources:
         - OwnerUpdated
         - Transfer
       abis:
-        - name: GH
-          file: ./abis/GH.json
+        - name: GoldenHopper
+          file: ./abis/GoldenHopper.json
       eventHandlers:
         - event: Approval(indexed address,indexed address,indexed uint256)
           handler: handleApproval
@@ -30,4 +30,30 @@ dataSources:
           handler: handleOwnerUpdated
         - event: Transfer(indexed address,indexed address,indexed uint256)
           handler: handleTransfer
-      file: ./src/mapping.ts
+      file: ./src/golden-hopper.ts
+  - kind: ethereum
+    name: Market
+    network: fuji
+    source:
+      address: "0xB31C8b4f2350b1B76dfeB144c829f4e9CaaA55ed"
+      startBlock: 13617452 
+      abi: Market
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - Bazaar
+      abis:
+        - name: Market
+          file: ./abis/Market.json
+      eventHandlers:
+        - event: AddListingEv(uint256,indexed address,indexed uint256,uint256)
+          handler: handleAddListing
+        - event: UpdateListingEv(uint256,uint256)
+          handler: handleUpdateListing
+        - event: CancelListingEv(uint256)
+          handler: handleCancelListing
+        - event: FulfillListingEv(uint256)
+          handler: handleFulfillListing
+      file: ./src/golden-hopper.ts
